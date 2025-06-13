@@ -1,0 +1,20 @@
+[package]
+name = "browser"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[build-dependencies]
+cef-ui-util = { path = "../crates/cef-ui-util" }
+anyhow = { workspace = true }
+
+
+[dependencies]
+gpui = { git = "https://github.com/zed-industries/zed" }
+cef-ui = { path = "../crates/cef-ui" }
+cef-ui-sys = { path = "../crates/cef-ui-sys" }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-log = { workspace = true }
+tracing-subscriber = { workspace = true }
+winit = "0.29"

@@ -1,0 +1,9 @@
+[alias]
+cef-build-debug = "run --bin cef-build --release -- --profile dev"
+cef-build-release = "run --bin cef-build --release -- --profile release"
+cef-clean = "run --bin cef-clean --release"
+cef-artifacts = "run --bin cef-artifacts --release"
+
+[env]
+CEF_WORKSPACE_DIR = { relative = true, force = true, value = "" }
+CEF_ARTIFACTS_DIR = { relative = true, force = true, value = "artifacts" }
