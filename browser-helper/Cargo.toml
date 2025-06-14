@@ -1,18 +1,16 @@
 [package]
-name = "cef-ui-simple"
+name = "browser-helper"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
 
 [build-dependencies]
-cef-ui-util = { path = "../cef-ui-util" }
+cef-ui-util = { path = "../crates/cef-ui-util" }
 anyhow = { workspace = true }
 
 [dependencies]
-cef-ui-sys = { path = "../cef-ui-sys" }
-cef-ui = { path = "../cef-ui" }
+cef-ui-helper = { path = "../crates/cef-ui-helper" }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-log = { workspace = true }
-tracing-subscriber = { workspace = true }
-winit = "0.29"
+tracing-subscriber = { workspace = true } 

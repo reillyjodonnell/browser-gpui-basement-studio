@@ -1,5 +1,6 @@
 [alias]
-cef-build-debug = "run --bin cef-build --release -- --profile dev"
+cef-build-debug = "run --bin cef-build --release -- --profile dev --target browser"
+browser-build-debug = "run --bin cef-build --release -- --profile dev --target browser"
 cef-build-release = "run --bin cef-build --release -- --profile release"
 cef-clean = "run --bin cef-clean --release"
 cef-artifacts = "run --bin cef-artifacts --release"

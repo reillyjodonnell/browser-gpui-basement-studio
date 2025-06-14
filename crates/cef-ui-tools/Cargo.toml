@@ -9,7 +9,7 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-log = { workspace = true }
 tracing-subscriber = { workspace = true }
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 
 [[bin]]
 name = "cef-artifacts"
@@ -22,3 +22,7 @@ path = "src/cef_build.rs"
 [[bin]]
 name = "cef-clean"
 path = "src/cef_clean.rs"
+
+[[bin]]
+name = "browser-build"
+path = "src/browser_build.rs"

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::{fs::create_dir_all, path::PathBuf, process::exit};
+use std::{fs::create_dir_all, path::PathBuf, process::exit, sync::Arc};
 
 use cef_ui::{
     AccessibilityHandler, App, AppCallbacks, Browser, BrowserHost, BrowserSettings, Client,
@@ -13,9 +13,9 @@ use cef_ui::{
 };
 
 use gpui::{
-    actions, div, linear_color_stop, linear_gradient, point, prelude::*, px, rgb, rgba, size, svg,
-    App as GpuiApp, Application, AssetSource, Bounds, Global, KeyBinding, SharedString, Window,
-    WindowBounds, WindowOptions,
+    actions, div, img, linear_color_stop, linear_gradient, point, prelude::*, px, rgb, rgba, size,
+    svg, App as GpuiApp, Application, AssetSource, Bounds, Global, Image, ImageSource, KeyBinding,
+    SharedString, Window, WindowBounds, WindowOptions,
 };
 
 // Asset loader for SVG files
@@ -66,6 +66,7 @@ impl AssetSource for Assets {
 struct BrowserState {
     browser: Option<Browser>,
     context: Option<Context>,
+    image: Option<Image>,
 }
 
 impl Global for BrowserState {}
@@ -97,8 +98,10 @@ impl Render for WindowDemo {
     fn render(
         &mut self,
         _window: &mut Window,
-        _cx: &mut gpui::Context<'_, WindowDemo>,
+        cx: &mut gpui::Context<'_, WindowDemo>,
     ) -> impl IntoElement {
+        let state = cx.global::<BrowserState>();
+
         div()
             .border_1()
             .border_color(rgba(0xd3d9d92b))
@@ -220,7 +223,7 @@ impl Render for WindowDemo {
                             ),
                     ),
             )
-            // TODO: This is where the CEF browser content will go
+            // Render the browser content
             .child(
                 div()
                     .flex()
@@ -228,7 +231,13 @@ impl Render for WindowDemo {
                     .bg(rgb(0xffffff))
                     .items_center()
                     .justify_center()
-                    .child("Browser content will appear here"),
+                    .child(if let Some(image) = &state.image {
+                        div()
+                            .size_full()
+                            .child(img(ImageSource::from(Arc::new(image.clone()))))
+                    } else {
+                        div().child("Loading...")
+                    }),
             )
     }
 }
@@ -388,13 +397,6 @@ impl RenderHandlerCallbacks for MyRenderHandler {
         width: usize,
         height: usize,
     ) {
-        println!(
-            "Received frame: {}x{} with {} bytes",
-            width,
-            height,
-            buffer.len()
-        );
-        // TODO: Convert buffer to GPUI texture and update the UI
     }
 
     fn get_screen_info(&mut self, _browser: Browser) -> Option<ScreenInfo> {
@@ -493,10 +495,8 @@ impl AppCallbacks for MyAppCallbacks {
 }
 
 pub fn get_root_cache_dir() -> Result<PathBuf> {
-    let path = PathBuf::from("/tmp/cef-ui-simple");
-    if !path.exists() {
-        create_dir_all(&path)?;
-    }
+    let path = PathBuf::from("/tmp/browser");
+    create_dir_all(&path)?;
     Ok(path)
 }
 
@@ -566,6 +566,7 @@ fn try_main() -> Result<()> {
             cx.set_global(BrowserState {
                 browser: None,
                 context: None,
+                image: None,
             });
 
             // Initialize CEF and browser

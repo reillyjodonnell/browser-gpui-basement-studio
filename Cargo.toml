@@ -8,6 +8,7 @@ members = [
     "crates/cef-ui-util",
     "crates/cef-ui-simple-helper",
     "browser",
+    "browser-helper",
 ]
 
 [workspace.dependencies]

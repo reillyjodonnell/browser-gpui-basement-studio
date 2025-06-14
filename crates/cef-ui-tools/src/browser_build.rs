@@ -11,10 +11,6 @@ struct BuildArgs {
     /// Whether this is a release build.
     #[arg(long, default_value_t = String::from("dev"))]
     pub profile: String,
-
-    /// The target binary to build (cef-ui-simple or browser)
-    #[arg(long, default_value_t = String::from("cef-ui-simple"))]
-    pub target: String,
 }
 
 fn main() -> Result<()> {
@@ -33,7 +29,7 @@ fn main() -> Result<()> {
 
     // Build the main executable.
     BuildCommand {
-        binary: args.target.clone(),
+        binary: String::from("browser"),
         profile: args.profile.to_string(),
     }
     .run()?;
@@ -41,14 +37,8 @@ fn main() -> Result<()> {
     // If on macOS, we need to do some extra work.
     if cfg!(target_os = "macos") {
         // Build the helper executable.
-        let helper_name = if args.target == "browser" {
-            "browser-helper"
-        } else {
-            "cef-ui-simple-helper"
-        };
-
         BuildCommand {
-            binary: String::from(helper_name),
+            binary: String::from("browser-helper"),
             profile: args.profile.to_string(),
         }
         .run()?;
@@ -57,9 +47,9 @@ fn main() -> Result<()> {
         AppBundleSettings {
             profile: args.profile.to_string(),
             artifacts_dir: get_cef_artifacts_dir()?,
-            app_name: args.target.clone(),
-            main_exe_name: args.target.clone(),
-            helper_exe_name: String::from(helper_name),
+            app_name: String::from("browser"),
+            main_exe_name: String::from("browser"),
+            helper_exe_name: String::from("browser-helper"),
             resources_dir: workspace_dir.join("resources/macos"),
             org_name: String::from("hytopia"),
         }

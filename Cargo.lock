@@ -709,6 +709,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "browser-helper"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cef-ui-helper",
+ "cef-ui-util",
+ "tracing",
+ "tracing-log 0.1.4",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "bstr"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
