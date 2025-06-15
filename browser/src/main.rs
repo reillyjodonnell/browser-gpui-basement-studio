@@ -1,5 +1,11 @@
 use anyhow::Result;
-use std::{fs::create_dir_all, path::PathBuf, process::exit, sync::Arc};
+use std::{
+    fs::create_dir_all,
+    os::raw::c_void,
+    path::PathBuf,
+    process::exit,
+    sync::{Arc, Mutex},
+};
 
 use cef_ui::{
     AccessibilityHandler, App, AppCallbacks, Browser, BrowserHost, BrowserSettings, Client,
@@ -359,10 +365,6 @@ impl LifeSpanHandlerCallbacks for MyLifeSpanHandlerCallbacks {
 pub struct MyClientCallbacks;
 
 impl ClientCallbacks for MyClientCallbacks {
-    fn get_render_handler(&mut self) -> Option<RenderHandler> {
-        Some(RenderHandler::new(MyRenderHandler {}))
-    }
-
     fn get_context_menu_handler(&mut self) -> Option<ContextMenuHandler> {
         Some(ContextMenuHandler::new(MyContextMenuHandler {}))
     }
@@ -374,109 +376,173 @@ impl ClientCallbacks for MyClientCallbacks {
     fn get_life_span_handler(&mut self) -> Option<LifeSpanHandler> {
         Some(LifeSpanHandler::new(MyLifeSpanHandlerCallbacks {}))
     }
+
+    fn get_render_handler(&mut self) -> Option<RenderHandler> {
+        Some(RenderHandler::new(MyRenderHandler::new()))
+    }
 }
 
-pub struct MyRenderHandler;
+/// Render handler for windowless rendering
+pub struct MyRenderHandler {
+    view_size: Arc<Mutex<Size>>,
+    buffer: Arc<Mutex<Vec<u8>>>,
+}
+
+impl MyRenderHandler {
+    fn new() -> Self {
+        Self {
+            view_size: Arc::new(Mutex::new(Size {
+                width: 1024,
+                height: 768,
+            })),
+            buffer: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+}
 
 impl RenderHandlerCallbacks for MyRenderHandler {
-    fn get_view_rect(&mut self, _browser: Browser) -> Rect {
+    fn get_view_rect(&mut self, browser: Browser) -> Rect {
+        let size = *self.view_size.lock().unwrap();
         Rect {
             x: 0,
             y: 0,
-            width: 800,
-            height: 600,
+            width: size.width,
+            height: size.height,
         }
+    }
+
+    fn get_screen_point(&mut self, browser: Browser, view: &Point) -> Option<Point> {
+        // For windowless rendering, we can just return the same point
+        Some(*view)
+    }
+
+    fn get_screen_info(&mut self, browser: Browser) -> Option<ScreenInfo> {
+        let rect = self.get_view_rect(browser);
+        let mut info = ScreenInfo {
+            device_scale_factor: 1.0,
+            depth: 32,
+            depth_per_component: 8,
+            is_monochrome: false,
+            rect,
+            available_rect: rect,
+        };
+        Some(info)
     }
 
     fn on_paint(
         &mut self,
-        _browser: Browser,
-        _paint_type: PaintElementType,
-        _dirty_rects: &[Rect],
+        browser: Browser,
+        element_type: PaintElementType,
+        dirty_rects: &[Rect],
         buffer: &[u8],
         width: usize,
         height: usize,
     ) {
+        // Print first few items in the buffer
+        println!(
+            "Paint event - Element type: {:?}, Width: {}, Height: {}",
+            element_type, width, height
+        );
+        println!(
+            "First 10 bytes of buffer: {:?}",
+            &buffer[..std::cmp::min(10, buffer.len())]
+        );
+
+        // Store the buffer data
+        let mut current_buffer = self.buffer.lock().unwrap();
+        current_buffer.clear();
+        current_buffer.extend_from_slice(buffer);
+
+        // Update view size if needed
+        let mut current_size = self.view_size.lock().unwrap();
+        if current_size.width != width as i32 || current_size.height != height as i32 {
+            *current_size = Size {
+                width: width as i32,
+                height: height as i32,
+            };
+        }
     }
-
-    fn get_screen_info(&mut self, _browser: Browser) -> Option<ScreenInfo> {
-        None
-    }
-
-    fn on_scroll_offset_changed(&mut self, _browser: Browser, _x: f64, _y: f64) {}
-
-    fn on_ime_composition_range_changed(
-        &mut self,
-        _browser: Browser,
-        _selected_range: &cef_ui::Range,
-        _character_bounds: &[Rect],
-    ) {
-    }
-
-    fn on_text_selection_changed(
-        &mut self,
-        _browser: Browser,
-        _selected_text: Option<String>,
-        _selected_range: &Range,
-    ) {
-    }
-
-    fn on_virtual_keyboard_requested(&mut self, _browser: Browser, _input_mode: TextInputMode) {}
 
     fn get_accessibility_handler(&mut self) -> Option<AccessibilityHandler> {
         None
     }
 
-    fn get_root_screen_rect(&mut self, _browser: Browser) -> Option<Rect> {
-        Some(Rect {
-            x: 0,
-            y: 0,
-            width: 800,
-            height: 600,
-        })
+    fn get_root_screen_rect(&mut self, browser: Browser) -> Option<Rect> {
+        Some(self.get_view_rect(browser))
     }
 
-    fn get_screen_point(&mut self, _browser: Browser, _view_point: &Point) -> Option<Point> {
-        Some(*_view_point)
+    fn on_popup_show(&mut self, browser: Browser, show: bool) {
+        // Handle popup show/hide
     }
 
-    fn on_popup_show(&mut self, _browser: Browser, _show: bool) {}
-
-    fn on_popup_size(&mut self, _browser: Browser, _rect: &Rect) {}
+    fn on_popup_size(&mut self, browser: Browser, rect: &Rect) {
+        // Handle popup size changes
+    }
 
     fn on_accelerated_paint(
         &mut self,
-        _browser: Browser,
-        _paint_type: PaintElementType,
-        _dirty_rects: &[Rect],
-        _shared_handle: *mut std::ffi::c_void,
+        browser: Browser,
+        element_type: PaintElementType,
+        dirty_rects: &[Rect],
+        shared_handle: *mut c_void,
     ) {
+        // Handle accelerated painting if needed
     }
 
     fn get_touch_handle_size(
         &mut self,
-        _browser: Browser,
-        _orientation: HorizontalAlignment,
+        browser: Browser,
+        orientation: HorizontalAlignment,
     ) -> Size {
         Size {
-            width: 10,
-            height: 10,
+            width: 0,
+            height: 0,
         }
     }
 
-    fn on_touch_handle_state_changed(&mut self, _browser: Browser, _state: &TouchHandleState) {}
+    fn on_touch_handle_state_changed(&mut self, browser: Browser, state: &TouchHandleState) {
+        // Handle touch handle state changes
+    }
 
     fn start_dragging(
         &mut self,
-        _browser: Browser,
-        _drag_data: DragData,
-        _allowed_ops: DragOperations,
-        _point: &Point,
+        browser: Browser,
+        drag_data: DragData,
+        allowed_ops: DragOperations,
+        point: &Point,
     ) -> bool {
         false
     }
 
-    fn update_drag_cursor(&mut self, _browser: Browser, _operation: DragOperations) {}
+    fn update_drag_cursor(&mut self, browser: Browser, operation: DragOperations) {
+        // Update drag cursor
+    }
+
+    fn on_scroll_offset_changed(&mut self, browser: Browser, x: f64, y: f64) {
+        // Handle scroll offset changes
+    }
+
+    fn on_ime_composition_range_changed(
+        &mut self,
+        browser: Browser,
+        selected_range: &Range,
+        character_bounds: &[Rect],
+    ) {
+        // Handle IME composition range changes
+    }
+
+    fn on_text_selection_changed(
+        &mut self,
+        browser: Browser,
+        selected_text: Option<String>,
+        selected_range: &Range,
+    ) {
+        // Handle text selection changes
+    }
+
+    fn on_virtual_keyboard_requested(&mut self, browser: Browser, input_mode: TextInputMode) {
+        // Handle virtual keyboard requests
+    }
 }
 
 pub struct MyAppCallbacks;
@@ -530,6 +596,7 @@ fn create_browser() -> Result<Browser, Box<dyn std::error::Error>> {
         .windowless_rendering_enabled(true);
 
     let browser_settings = BrowserSettings::new();
+
     let client = Client::new(MyClientCallbacks);
 
     // BrowserHost::create_browser_sync returns Browser directly, not Result
@@ -603,6 +670,12 @@ fn try_main() -> Result<()> {
             .unwrap();
 
             cx.activate(true);
+
+            // Run the message loop
+            if let Some(context) = cx.global::<BrowserState>().context.as_ref() {
+                context.run_message_loop();
+            }
+
             cx.on_action(|_: &Quit, cx| {
                 // Cleanup using GPUI's global state
                 let state = cx.global_mut::<BrowserState>();

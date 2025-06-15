@@ -702,6 +702,7 @@ dependencies = [
  "cef-ui-sys",
  "cef-ui-util",
  "gpui",
+ "once_cell",
  "tracing",
  "tracing-log 0.1.4",
  "tracing-subscriber",
